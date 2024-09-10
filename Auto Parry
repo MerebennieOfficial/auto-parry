@@ -1,0 +1,50 @@
+-- Define a global variable for autoparry
+getgenv().autoparry = true
+
+-- Get necessary services
+local VirtualManager = game:GetService("VirtualInputManager")
+local RunService = game:GetService('RunService')
+local Players = game:GetService('Players')
+local Player = Players.LocalPlayer or Players.PlayerAdded:Wait()
+
+-- Load the helper module
+local parry_helper = loadstring(game:HttpGet("https://raw.githubusercontent.com/TripleScript/TripleHub/main/helper_.lua"))()
+
+-- Variable to control parry execution
+local shouldParry = false
+
+-- Function to handle parrying
+local function handleParry()
+    if not getgenv().autoparry then
+        return
+    end
+
+    local target = parry_helper.FindTargetBall()
+    if not target then
+        return
+    end
+
+    local velocity = target:FindFirstChild('zoomies') and target.zoomies.VectorVelocity or target.AssemblyLinearVelocity
+    local targetPosition = target.Position
+    local playerPosition = Player.Character.PrimaryPart.Position
+    local direction = (playerPosition - targetPosition).Unit
+    local distance = Player:DistanceFromCharacter(targetPosition)
+    local dotProduct = direction:Dot(velocity.Unit)
+    local velocityMagnitude = velocity.Magnitude
+
+    if dotProduct > 0 then
+        local adjustedDistance = distance - 5
+        local distanceRatio = adjustedDistance / velocityMagnitude
+
+        if parry_helper.IsPlayerTarget(target) and distanceRatio <= 0.55 and not shouldParry then
+            VirtualManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+            wait(0.01)
+            shouldParry = true
+        end
+    else
+        shouldParry = false
+    end
+end
+
+-- Connect the function to RunService.PreRender
+RunService.PreRender:Connect(handleParry)
